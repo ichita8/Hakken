@@ -41,19 +41,23 @@ Deno.serve(async (req: Request) => {
 
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", input.analysisId);
 
-    const openaiKey = Deno.env.get("OPENAI_API_KEY");
+    const openrouterKey = Deno.env.get("OPENROUTER_API_KEY");
+    const openrouterModel = Deno.env.get("OPENROUTER_MODEL") || "openai/gpt-4o";
 
     let result: AnalysisResult;
+    let engine = "deterministic";
 
-    if (openaiKey) {
+    if (openrouterKey) {
+      engine = "openrouter";
       try {
-        result = await runOpenAIAnalysis(input, openaiKey);
+        result = await runLLMAnalysis(input, openrouterKey, openrouterModel);
       } catch (aiErr) {
-        console.error("OpenAI analysis failed, falling back to deterministic engine:", aiErr);
+        console.error("OpenRouter analysis failed, falling back to deterministic engine:", aiErr);
+        engine = "deterministic";
         result = runDeterministicAnalysis(input);
       }
     } else {
-      console.log("No OPENAI_API_KEY set, using deterministic analysis engine");
+      console.log("No OPENROUTER_API_KEY set, using deterministic analysis engine");
       result = runDeterministicAnalysis(input);
     }
 
@@ -136,7 +140,7 @@ Deno.serve(async (req: Request) => {
         opportunityScore: result.layer5.score,
         expectedProfit: result.layer4.expectedProfit,
         expectedRoi: result.layer4.expectedRoi,
-        engine: openaiKey ? "openai" : "deterministic",
+        engine,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -185,9 +189,9 @@ interface Layer4Result {
 }
 interface Layer5Result { score: number; tier: string; reasoning: string; }
 
-// ============ OPENAI GPT-4o VISION ANALYSIS ============
+// ============ OPENROUTER LLM VISION ANALYSIS ============
 
-async function runOpenAIAnalysis(input: AnalysisInput, apiKey: string): Promise<AnalysisResult> {
+async function runLLMAnalysis(input: AnalysisInput, apiKey: string, model: string): Promise<AnalysisResult> {
   const systemPrompt = `You are HAKKEN, an expert AI-powered resale intelligence analyst specializing in luxury goods, watches, cameras, bags, guitars, sneakers, and other high-value resale items. You have deep expertise in product identification, condition assessment, authenticity verification, market valuation, and deal evaluation.
 
 You will analyze a listing and return a JSON object with exactly this structure. All numeric fields must be numbers (not strings). Be precise and realistic with valuations based on actual market knowledge.
@@ -286,14 +290,14 @@ Important rules:
     });
   }
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "gpt-4o",
+      model,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userContent },
@@ -306,12 +310,12 @@ Important rules:
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`OpenAI API error (${response.status}): ${errText}`);
+    throw new Error(`OpenRouter API error (${response.status}): ${errText}`);
   }
 
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content;
-  if (!content) throw new Error("Empty response from OpenAI");
+  if (!content) throw new Error("Empty response from OpenRouter");
 
   const parsed = JSON.parse(content);
 
