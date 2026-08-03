@@ -7,7 +7,7 @@ HAKKEN analyzes secondhand listings for resale arbitrage opportunities. Paste a 
 - **Frontend:** React 18 + TypeScript + Vite + Tailwind CSS
 - **UI:** Lucide icons, custom glassmorphism design system
 - **Backend:** Supabase (PostgreSQL database, auth, storage, edge functions)
-- **AI:** OpenAI GPT-4o Vision (with deterministic fallback engine)
+- **AI:** OpenRouter (supports GPT-4o, Claude, Gemini, and more — with deterministic fallback engine)
 
 ## Getting Started
 
@@ -15,7 +15,7 @@ HAKKEN analyzes secondhand listings for resale arbitrage opportunities. Paste a 
 
 - Node.js 18+
 - A Supabase project (create one free at [supabase.com](https://supabase.com))
-- An OpenAI API key (optional — the app works without it using the built-in engine)
+- An OpenRouter API key (optional — the app works without it using the built-in engine)
 
 ### 1. Install dependencies
 
@@ -56,15 +56,23 @@ supabase functions deploy analyze-listing
 
 Or use the Supabase dashboard: Edge Functions > Deploy from the `supabase/functions/analyze-listing/` directory.
 
-### 5. Set the OpenAI API key (optional but recommended)
+### 5. Set the OpenRouter API key (optional but recommended)
 
 In your Supabase dashboard, go to **Settings > Edge Functions > Secrets** and add:
 
 ```
-OPENAI_API_KEY=sk-your-openai-key-here
+OPENROUTER_API_KEY=sk-or-your-openrouter-key-here
 ```
 
-When this key is present, the analysis uses GPT-4o Vision to examine your uploaded photos. When it's absent, the app falls back to a deterministic pattern-matching engine so everything still works.
+You can also optionally set a model preference:
+
+```
+OPENROUTER_MODEL=openai/gpt-4o
+```
+
+When the API key is present, the analysis uses your chosen model (default: GPT-4o Vision) to examine uploaded photos and listing details. When it's absent, the app falls back to a deterministic pattern-matching engine so everything still works.
+
+OpenRouter lets you switch between models anytime — just change the `OPENROUTER_MODEL` secret. Supported models include `openai/gpt-4o`, `anthropic/claude-3.5-sonnet`, `google/gemini-flash-2.0`, and many others. See [openrouter.ai/models](https://openrouter.ai/models) for the full list.
 
 ### 6. Run the dev server
 
