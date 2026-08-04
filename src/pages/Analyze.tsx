@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
-import { MARKETPLACES } from "@/lib/types";
+import { MARKETPLACES, DEFAULT_CATEGORIES } from "@/lib/types";
 import {
   ScanLine, Link2, ImagePlus, Sparkles, X, Loader2, CheckCircle2, AlertCircle,
-  Upload, Camera, Trash2, FileWarning
+  Upload, Camera, Trash2, FileWarning, Tag
 } from "lucide-react";
 
 interface AnalyzeProps {
@@ -34,6 +34,7 @@ export default function Analyze({ onAnalysisComplete }: AnalyzeProps) {
   const [description, setDescription] = useState("");
   const [askingPrice, setAskingPrice] = useState("");
   const [marketplace, setMarketplace] = useState(MARKETPLACES[0]);
+  const [category, setCategory] = useState("General");
   const [listingUrl, setListingUrl] = useState("");
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -139,6 +140,7 @@ export default function Analyze({ onAnalysisComplete }: AnalyzeProps) {
         description: description.trim() || null,
         asking_price: parseFloat(askingPrice),
         marketplace,
+        category,
         image_urls: imageUrls,
         listing_url: listingUrl.trim(),
         status: "pending",
@@ -175,6 +177,7 @@ export default function Analyze({ onAnalysisComplete }: AnalyzeProps) {
             description: description.trim(),
             askingPrice: parseFloat(askingPrice),
             marketplace,
+            category,
             imageUrls,
             listingUrl: listingUrl.trim(),
           }),
@@ -327,6 +330,22 @@ export default function Analyze({ onAnalysisComplete }: AnalyzeProps) {
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div>
+              <label className="label-text flex items-center gap-1">
+                <Tag className="w-3 h-3" /> Category
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="input-field cursor-pointer"
+              >
+                {DEFAULT_CATEGORIES.map((c) => (
+                  <option key={c} value={c} className="bg-ink-900">{c}</option>
+                ))}
+              </select>
+              <p className="text-xs text-ink-500 mt-2">Select the category that best fits this listing. You can add custom categories in Settings.</p>
             </div>
 
             <div>
