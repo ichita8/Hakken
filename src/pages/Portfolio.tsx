@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import type { PortfolioItem } from "@/lib/types";
 import { formatCurrency, formatPercent, formatDate } from "@/lib/utils";
-import { Briefcase, Plus, TrendingUp, TrendingDown, Package, X, Edit3, Trash2, DollarSign, ShoppingCart, Tag } from "lucide-react";
+import { Briefcase, Plus, TrendingUp, TrendingDown, Package, X, Edit3, Trash2, DollarSign, ShoppingCart, Tag, Download, BarChart3, PieChart } from "lucide-react";
 
 export default function Portfolio() {
   const { user } = useAuth();
@@ -29,14 +29,55 @@ export default function Portfolio() {
 
   const filtered = filter === "all" ? items : items.filter((i) => i.status === filter);
 
-  const stats = {
-    totalItems: items.length,
-    activeCount: items.filter((i) => i.status === "active").length,
-    soldCount: items.filter((i) => i.status === "sold").length,
-    totalInvested: items.reduce((s, i) => s + i.acquisition_price, 0),
-    totalRevenue: items.filter((i) => i.sold_price).reduce((s, i) => s + (i.sold_price || 0), 0),
-    totalProfit: items.filter((i) => i.actual_profit !== null).reduce((s, i) => s + (i.actual_profit || 0), 0),
-  };
+  const stats = useMemo(() => {
+    const sold = items.filter((i) => i.status === "sold" && i.actual_profit !== null);
+    const totalProfit = sold.reduce((s, i) => s + (i.actual_profit || 0), 0);
+    const totalRevenue = sold.reduce((s, i) => s + (i.sold_price || 0), 0);
+    const totalCost = sold.reduce((s, i) => s + i.acquisition_price, 0);
+    const avgROI = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
+    const winCount = sold.filter((i) => (i.actual_profit || 0) > 0).length;
+    const winRate = sold.length > 0 ? (winCount / sold.length) * 100 : 0;
+
+    return {
+      totalItems: items.length,
+      activeCount: items.filter((i) => i.status === "active").length,
+      soldCount: sold.length,
+      totalInvested: items.reduce((s, i) => s + i.acquisition_price, 0),
+      totalRevenue,
+      totalProfit,
+      avgROI,
+      winRate,
+    };
+  }, [items]);
+
+  function exportCSV() {
+    if (items.length === 0) return;
+    const rows = items.map((i) => ({
+      Title: i.title,
+      Category: i.category || "",
+      Status: i.status,
+      AcquisitionPrice: i.acquisition_price || "",
+      ListingPrice: i.listing_price ?? "",
+      SoldPrice: i.sold_price ?? "",
+      ActualProfit: i.actual_profit ?? "",
+      ActualROI: i.actual_roi ?? "",
+      MarketplaceBought: i.marketplace_bought || "",
+      MarketplaceSelling: i.marketplace_selling || "",
+      DateAdded: i.created_at ? new Date(i.created_at).toISOString() : "",
+    }));
+    const headers = Object.keys(rows[0]);
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) => headers.map((h) => `"${String((r as any)[h]).replace(/"/g, '""')}"`).join(",")),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `hakken-portfolio-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   async function deleteItem(id: string) {
     await supabase.from("portfolio_items").delete().eq("id", id);
@@ -88,10 +129,17 @@ export default function Portfolio() {
           <h1 className="font-display text-2xl lg:text-3xl font-bold text-white">Portfolio</h1>
           <p className="text-sm text-ink-400 mt-1">Track your inventory, sales, and profits.</p>
         </div>
-        <button onClick={() => setShowAdd(true)} className="btn-primary flex items-center gap-2 self-start">
-          <Plus className="w-4 h-4" />
-          Add Item
-        </button>
+        <div className="flex items-center gap-2">
+          {items.length > 0 && (
+            <button onClick={exportCSV} className="btn-secondary flex items-center gap-2">
+              <Download className="w-4 h-4" /> Export CSV
+            </button>
+          )}
+          <button onClick={() => setShowAdd(true)} className="btn-primary flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Add Item
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -101,6 +149,35 @@ export default function Portfolio() {
         <StatCard label="Revenue (Sold)" value={formatCurrency(stats.totalRevenue)} icon={DollarSign} color="text-emerald-400" bg="bg-emerald-500/10" />
         <StatCard label="Realized Profit" value={formatCurrency(stats.totalProfit)} icon={stats.totalProfit >= 0 ? TrendingUp : TrendingDown} color={stats.totalProfit >= 0 ? "text-emerald-400" : "text-rose-400"} bg={stats.totalProfit >= 0 ? "bg-emerald-500/10" : "bg-rose-500/10"} />
       </div>
+
+      {/* Analytics summary */}
+      {stats.soldCount > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="glass-card p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <BarChart3 className="w-4 h-4 text-brand-400" />
+              <span className="text-xs text-ink-400">Average ROI</span>
+            </div>
+            <p className={`text-xl font-bold font-display ${stats.avgROI >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+              {formatPercent(stats.avgROI)}
+            </p>
+          </div>
+          <div className="glass-card p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <PieChart className="w-4 h-4 text-amber-400" />
+              <span className="text-xs text-ink-400">Win Rate</span>
+            </div>
+            <p className="text-xl font-bold font-display text-white">{stats.winRate.toFixed(0)}%</p>
+          </div>
+          <div className="glass-card p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <Package className="w-4 h-4 text-brand-400" />
+              <span className="text-xs text-ink-400">Items Sold</span>
+            </div>
+            <p className="text-xl font-bold font-display text-white">{stats.soldCount} / {stats.totalItems}</p>
+          </div>
+        </div>
+      )}
 
       {/* Filter tabs */}
       <div className="flex gap-1 p-1 bg-ink-900/60 rounded-xl w-fit">
@@ -175,9 +252,16 @@ function PortfolioCard({ item, onEdit, onDelete }: { item: PortfolioItem; onEdit
   return (
     <div className="glass-card p-5 glass-hover group">
       <div className="flex items-start justify-between gap-2 mb-3">
-        <span className={`text-[10px] px-2 py-0.5 rounded-full border ${statusColors[item.status]}`}>
-          {item.status}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${statusColors[item.status]}`}>
+            {item.status}
+          </span>
+          {item.category && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full border bg-brand-500/10 text-brand-400 border-brand-500/20">
+              {item.category}
+            </span>
+          )}
+        </div>
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button onClick={onEdit} className="p-1.5 rounded-lg text-ink-500 hover:text-brand-400 hover:bg-ink-800/50">
             <Edit3 className="w-3.5 h-3.5" />
@@ -315,3 +399,4 @@ function PortfolioModal({ item, onClose, onSave }: {
     </div>
   );
 }
+
