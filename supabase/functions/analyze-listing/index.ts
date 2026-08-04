@@ -15,6 +15,7 @@ interface AnalysisInput {
   marketplace: string;
   imageUrls: string[];
   listingUrl?: string;
+  category?: string;
   userProfile?: {
     budget: number;
     riskTolerance: string;
@@ -66,6 +67,7 @@ Deno.serve(async (req: Request) => {
       .from("analyses")
       .update({
         status: "complete",
+        category: input.category || result.layer1.category,
         item_brand: result.layer1.brand,
         item_model: result.layer1.model,
         item_year: result.layer1.year,
