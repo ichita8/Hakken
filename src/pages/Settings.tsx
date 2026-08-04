@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import type { Profile } from "@/lib/types";
-import { CATEGORIES, MARKETPLACES } from "@/lib/types";
+import { DEFAULT_CATEGORIES, MARKETPLACES } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
-import { Settings as SettingsIcon, User, Target, AlertTriangle, Check, Loader2, Shield } from "lucide-react";
+import { Settings as SettingsIcon, User, Target, AlertTriangle, Check, Loader2, Shield, Plus, X } from "lucide-react";
 
 export default function Settings() {
   const { user, profile, refreshProfile } = useAuth();
@@ -14,6 +14,8 @@ export default function Settings() {
   const [targetRoiMin, setTargetRoiMin] = useState(profile?.target_roi_min?.toString() || "20");
   const [targetDaysToSellMax, setTargetDaysToSellMax] = useState(profile?.target_days_to_sell_max?.toString() || "30");
   const [preferredCategories, setPreferredCategories] = useState<string[]>(profile?.preferred_categories || []);
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [newCategory, setNewCategory] = useState("");
   const [preferredMarketplaces, setPreferredMarketplaces] = useState<string[]>(profile?.preferred_marketplaces || []);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -26,12 +28,29 @@ export default function Settings() {
       setTargetRoiMin(profile.target_roi_min?.toString() || "20");
       setTargetDaysToSellMax(profile.target_days_to_sell_max?.toString() || "30");
       setPreferredCategories(profile.preferred_categories || []);
+      const builtIn = new Set(DEFAULT_CATEGORIES);
+      const custom = (profile.preferred_categories || []).filter((c) => !builtIn.has(c));
+      setCustomCategories(custom);
       setPreferredMarketplaces(profile.preferred_marketplaces || []);
     }
   }, [profile]);
 
   function toggleCategory(cat: string) {
     setPreferredCategories((prev) => prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]);
+  }
+
+  function addCustomCategory() {
+    const trimmed = newCategory.trim();
+    if (!trimmed) return;
+    if (preferredCategories.includes(trimmed)) return;
+    setPreferredCategories((prev) => [...prev, trimmed]);
+    setCustomCategories((prev) => [...prev, trimmed]);
+    setNewCategory("");
+  }
+
+  function removeCustomCategory(cat: string) {
+    setPreferredCategories((prev) => prev.filter((c) => c !== cat));
+    setCustomCategories((prev) => prev.filter((c) => c !== cat));
   }
 
   function toggleMarketplace(m: string) {
@@ -134,7 +153,7 @@ export default function Settings() {
         <div>
           <label className="label-text">Preferred Categories</label>
           <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map((cat) => (
+            {DEFAULT_CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 type="button"
@@ -148,7 +167,41 @@ export default function Settings() {
                 {cat}
               </button>
             ))}
+            {customCategories.map((cat) => (
+              <span
+                key={cat}
+                className="px-3 py-1.5 rounded-lg text-sm border border-brand-500/50 bg-brand-500/10 text-brand-400 flex items-center gap-1.5"
+              >
+                {cat}
+                <button
+                  type="button"
+                  onClick={() => removeCustomCategory(cat)}
+                  className="text-brand-400/60 hover:text-rose-400"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
           </div>
+          <div className="flex gap-2 mt-3">
+            <input
+              type="text"
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomCategory(); } }}
+              placeholder="Add custom category (e.g. Technology, Automobiles)"
+              className="input-field flex-1"
+            />
+            <button
+              type="button"
+              onClick={addCustomCategory}
+              disabled={!newCategory.trim()}
+              className="btn-secondary flex items-center gap-1.5 disabled:opacity-40"
+            >
+              <Plus className="w-4 h-4" /> Add
+            </button>
+          </div>
+          <p className="text-xs text-ink-500 mt-2">Custom categories will appear in the category dropdown when analyzing listings.</p>
         </div>
 
         {/* Preferred marketplaces */}
