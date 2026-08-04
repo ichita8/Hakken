@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import type { Analysis, DealAlert } from "@/lib/types";
+import { DEFAULT_CATEGORIES } from "@/lib/types";
 import { formatCurrency, formatPercent, timeAgo, getDecisionColor, getScoreColor, getTierColor } from "@/lib/utils";
-import { TrendingUp, TrendingDown, ScanLine, Briefcase, Target, Zap, ArrowRight, Activity, Eye } from "lucide-react";
+import { TrendingUp, TrendingDown, ScanLine, Briefcase, Target, Zap, ArrowRight, Activity, Eye, Search, Download, Filter } from "lucide-react";
 
 interface DashboardProps {
   onNavigate: (page: "dashboard" | "analyze" | "portfolio" | "settings") => void;
@@ -16,12 +17,15 @@ export default function Dashboard({ onNavigate, onViewAnalysis }: DashboardProps
   const [alerts, setAlerts] = useState<DealAlert[]>([]);
   const [stats, setStats] = useState({ total: 0, buyCount: 0, avgScore: 0, totalProfit: 0 });
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [decisionFilter, setDecisionFilter] = useState<string>("all");
 
   useEffect(() => {
     async function loadData() {
       if (!user) return;
       const [analysesRes, alertsRes] = await Promise.all([
-        supabase.from("analyses").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
+        supabase.from("analyses").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(50),
         supabase.from("deal_alerts").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5),
       ]);
 
@@ -40,6 +44,63 @@ export default function Dashboard({ onNavigate, onViewAnalysis }: DashboardProps
     }
     loadData();
   }, [user]);
+
+  const filteredAnalyses = useMemo(() => {
+    let result = recentAnalyses;
+    if (categoryFilter !== "all") {
+      result = result.filter((a) => a.category === categoryFilter);
+    }
+    if (decisionFilter !== "all") {
+      result = result.filter((a) => a.decision === decisionFilter);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((a) =>
+        a.title.toLowerCase().includes(q) ||
+        (a.item_brand || "").toLowerCase().includes(q) ||
+        (a.item_model || "").toLowerCase().includes(q) ||
+        (a.marketplace || "").toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [recentAnalyses, categoryFilter, decisionFilter, searchQuery]);
+
+  const availableCategories = useMemo(() => {
+    const cats = new Set(DEFAULT_CATEGORIES);
+    recentAnalyses.forEach((a) => { if (a.category) cats.add(a.category); });
+    return Array.from(cats).sort();
+  }, [recentAnalyses]);
+
+  function exportCSV() {
+    const rows = filteredAnalyses.map((a) => ({
+      Title: a.title,
+      Category: a.category || "",
+      Marketplace: a.marketplace,
+      AskingPrice: a.asking_price || "",
+      Brand: a.item_brand || "",
+      Model: a.item_model || "",
+      Decision: a.decision || "",
+      OpportunityScore: a.opportunity_score ?? "",
+      ExpectedProfit: a.expected_profit ?? "",
+      ExpectedROI: a.expected_roi ?? "",
+      FairMarketValue: a.fair_market_value ?? "",
+      Status: a.status,
+      Date: a.created_at ? new Date(a.created_at).toISOString() : "",
+    }));
+    if (rows.length === 0) return;
+    const headers = Object.keys(rows[0]);
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) => headers.map((h) => `"${String((r as any)[h]).replace(/"/g, '""')}"`).join(",")),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `hakken-analyses-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   const statCards = [
     { label: "Total Analyses", value: stats.total.toString(), icon: ScanLine, color: "text-brand-400", bg: "bg-brand-500/10" },
@@ -88,12 +149,51 @@ export default function Dashboard({ onNavigate, onViewAnalysis }: DashboardProps
               <Activity className="w-5 h-5 text-brand-400" />
               Recent Analyses
             </h2>
-            {recentAnalyses.length > 0 && (
-              <button onClick={() => onNavigate("portfolio")} className="text-sm text-brand-400 hover:text-brand-300 flex items-center gap-1">
-                View all <ArrowRight className="w-3 h-3" />
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {recentAnalyses.length > 0 && (
+                <button onClick={exportCSV} className="text-sm text-ink-400 hover:text-brand-400 flex items-center gap-1 transition-colors">
+                  <Download className="w-3.5 h-3.5" /> Export CSV
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Search & filters */}
+          {recentAnalyses.length > 0 && (
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-ink-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by title, brand, model..."
+                  className="input-field pl-9"
+                />
+              </div>
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="input-field cursor-pointer sm:w-44"
+              >
+                <option value="all" className="bg-ink-900">All Categories</option>
+                {availableCategories.map((c) => (
+                  <option key={c} value={c} className="bg-ink-900">{c}</option>
+                ))}
+              </select>
+              <select
+                value={decisionFilter}
+                onChange={(e) => setDecisionFilter(e.target.value)}
+                className="input-field cursor-pointer sm:w-36"
+              >
+                <option value="all" className="bg-ink-900">All Decisions</option>
+                <option value="BUY" className="bg-ink-900">BUY</option>
+                <option value="NEGOTIATE" className="bg-ink-900">NEGOTIATE</option>
+                <option value="WATCH" className="bg-ink-900">WATCH</option>
+                <option value="AVOID" className="bg-ink-900">AVOID</option>
+              </select>
+            </div>
+          )}
 
           {loading ? (
             <div className="space-y-3">
@@ -101,21 +201,36 @@ export default function Dashboard({ onNavigate, onViewAnalysis }: DashboardProps
                 <div key={i} className="h-24 rounded-2xl shimmer-bg" />
               ))}
             </div>
-          ) : recentAnalyses.length === 0 ? (
+          ) : filteredAnalyses.length === 0 ? (
             <div className="glass-card p-12 text-center">
               <div className="w-16 h-16 rounded-2xl bg-ink-800/50 flex items-center justify-center mx-auto mb-4">
-                <ScanLine className="w-8 h-8 text-ink-500" />
+                {recentAnalyses.length === 0 ? <ScanLine className="w-8 h-8 text-ink-500" /> : <Filter className="w-8 h-8 text-ink-500" />}
               </div>
-              <h3 className="text-lg font-medium text-ink-200 mb-2">No analyses yet</h3>
-              <p className="text-sm text-ink-400 mb-6">Start by analyzing your first listing to discover profitable resale opportunities.</p>
-              <button onClick={() => onNavigate("analyze")} className="btn-primary inline-flex items-center gap-2">
-                <ScanLine className="w-4 h-4" />
-                Analyze a Listing
-              </button>
+              <h3 className="text-lg font-medium text-ink-200 mb-2">
+                {recentAnalyses.length === 0 ? "No analyses yet" : "No matching analyses"}
+              </h3>
+              <p className="text-sm text-ink-400 mb-6">
+                {recentAnalyses.length === 0
+                  ? "Start by analyzing your first listing to discover profitable resale opportunities."
+                  : "Try adjusting your search or filters."}
+              </p>
+              {recentAnalyses.length === 0 ? (
+                <button onClick={() => onNavigate("analyze")} className="btn-primary inline-flex items-center gap-2">
+                  <ScanLine className="w-4 h-4" />
+                  Analyze a Listing
+                </button>
+              ) : (
+                <button
+                  onClick={() => { setSearchQuery(""); setCategoryFilter("all"); setDecisionFilter("all"); }}
+                  className="btn-secondary"
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
-              {recentAnalyses.map((analysis) => (
+              {filteredAnalyses.map((analysis) => (
                 <AnalysisCard key={analysis.id} analysis={analysis} onClick={() => onViewAnalysis(analysis.id)} />
               ))}
             </div>
@@ -186,7 +301,7 @@ function AnalysisCard({ analysis, onClick }: { analysis: Analysis; onClick: () =
     <div onClick={onClick} className="glass-card p-5 glass-hover cursor-pointer group">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             {isComplete && analysis.decision && (
               <span className={`text-[10px] px-2 py-0.5 rounded-full border ${getDecisionColor(analysis.decision)}`}>
                 {analysis.decision}
@@ -200,6 +315,11 @@ function AnalysisCard({ analysis, onClick }: { analysis: Analysis; onClick: () =
             {analysis.status === "failed" && (
               <span className="text-[10px] px-2 py-0.5 rounded-full border bg-rose-500/10 text-rose-400 border-rose-500/30">
                 Failed
+              </span>
+            )}
+            {analysis.category && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full border bg-brand-500/10 text-brand-400 border-brand-500/20">
+                {analysis.category}
               </span>
             )}
             <span className="text-xs text-ink-500">{analysis.marketplace}</span>
