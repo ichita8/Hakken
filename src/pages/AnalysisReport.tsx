@@ -54,7 +54,7 @@ export default function AnalysisReport({ analysisId, onBack, onNavigate }: Analy
       user_id: user.id,
       analysis_id: analysis.id,
       title: analysis.title,
-      category: analysis.item_brand || "General",
+      category: analysis.category || analysis.item_brand || "General",
       marketplace_bought: analysis.marketplace,
       acquisition_price: analysis.asking_price,
       listing_price: analysis.fair_market_value || null,
