@@ -21,6 +21,7 @@ export interface Analysis {
   marketplace: string;
   image_urls: string[];
   listing_url: string | null;
+  category: string | null;
   // Layer 1
   item_brand: string | null;
   item_model: string | null;
@@ -157,12 +158,17 @@ export const MARKETPLACES = [
   "Other",
 ];
 
-export const CATEGORIES = [
+export const DEFAULT_CATEGORIES = [
   "Watches",
   "Cameras",
   "Bags",
   "Guitars",
   "Sneakers",
   "Jewelry",
+  "Technology",
+  "Automobiles",
   "General",
 ];
+
+// Backward compat — use DEFAULT_CATEGORIES in new code
+export const CATEGORIES = DEFAULT_CATEGORIES;
