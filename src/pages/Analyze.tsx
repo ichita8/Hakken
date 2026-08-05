@@ -164,7 +164,7 @@ export default function Analyze({ onAnalysisComplete }: AnalyzeProps) {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-listing`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-listing-v3`,
         {
           method: "POST",
           headers: {
@@ -435,6 +435,26 @@ export default function Analyze({ onAnalysisComplete }: AnalyzeProps) {
                           {layer.name}
                         </p>
                         <p className="text-xs text-ink-500 mt-0.5">{layer.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {loading && completedLayers.length === PIPELINE_LAYERS.length && (
+              <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-2 text-emerald-300 text-sm animate-fade-in">
+                <CheckCircle2 className="w-4 h-4" />
+                Generating report...
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
                       </div>
                     </div>
                   </div>
