@@ -4,8 +4,8 @@ import AuthPage from "@/pages/AuthPage";
 import Nav from "@/components/Nav";
 import Dashboard from "@/pages/Dashboard";
 import Analyze from "@/pages/Analyze";
-import AnalysisReport from "@/pages/AnalysisReport";
-import Portfolio from "@/pages/Portfolio";
+import AnalysisReport from "@/pages/AnalysisReportV3";
+import Portfolio from "@/pages/PortfolioV2";
 import Settings from "@/pages/Settings";
 import { Radar } from "lucide-react";
 
