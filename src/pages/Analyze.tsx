@@ -374,30 +374,31 @@ export default function Analyze({ onAnalysisComplete }: AnalyzeProps) {
             )}
 
             <div>
-              <button type="submit" disabled={loading || !canSubmit} className="btn-primary w-full flex items-center justify-center gap-2">
+              <button
+                type="submit"
+                disabled={loading || !canSubmit}
+                className="btn-primary w-full flex items-center justify-center gap-2 py-3"
+              >
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Analyzing...
+                    Analyzing Listing...
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    Run 5-Layer AI Analysis
+                    Start AI Analysis
                   </>
                 )}
               </button>
-              {!canSubmit && !loading && (
-                <p className="text-xs text-ink-500 mt-2 text-center">All fields with * are required to run the analysis.</p>
-              )}
             </div>
           </form>
         </div>
 
-        {/* Pipeline visualization */}
+        {/* Pipeline Progress */}
         <div className="lg:col-span-2">
-          <div className="glass-card p-6 sticky top-6">
-            <h3 className="text-sm font-semibold text-white mb-1 flex items-center gap-2">
+          <div className="glass-card p-6 sticky top-10">
+            <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
               <ScanLine className="w-4 h-4 text-brand-400" />
               AI Analysis Pipeline
             </h3>
@@ -435,26 +436,6 @@ export default function Analyze({ onAnalysisComplete }: AnalyzeProps) {
                           {layer.name}
                         </p>
                         <p className="text-xs text-ink-500 mt-0.5">{layer.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {loading && completedLayers.length === PIPELINE_LAYERS.length && (
-              <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-2 text-emerald-300 text-sm animate-fade-in">
-                <CheckCircle2 className="w-4 h-4" />
-                Generating report...
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
                       </div>
                     </div>
                   </div>
