@@ -22,6 +22,7 @@ export interface Analysis {
   image_urls: string[];
   listing_url: string | null;
   category: string | null;
+  trend_analysis: any | null;
   // Layer 1
   item_brand: string | null;
   item_model: string | null;
