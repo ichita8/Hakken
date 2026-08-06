@@ -6,10 +6,11 @@ import Dashboard from "@/pages/Dashboard";
 import Analyze from "@/pages/Analyze";
 import AnalysisReport from "@/pages/AnalysisReportV3";
 import Portfolio from "@/pages/PortfolioV2";
+import Marketplace from "@/pages/Marketplace";
 import Settings from "@/pages/Settings";
 import { Radar } from "lucide-react";
 
-type Page = "dashboard" | "analyze" | "portfolio" | "settings";
+type Page = "dashboard" | "analyze" | "portfolio" | "marketplace" | "settings";
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -59,6 +60,8 @@ function AppContent() {
           <Dashboard onNavigate={handleNavigate} onViewAnalysis={handleViewAnalysis} />
         ) : page === "analyze" ? (
           <Analyze onAnalysisComplete={handleAnalysisComplete} />
+        ) : page === "marketplace" ? (
+          <Marketplace onNavigate={handleNavigate} onViewAnalysis={handleViewAnalysis} />
         ) : page === "portfolio" ? (
           <Portfolio />
         ) : (
