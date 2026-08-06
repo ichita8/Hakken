@@ -22,6 +22,8 @@ import {
   Target,
   Clock,
   DollarSign,
+  Archive,
+  Trash2,
 } from "lucide-react";
 
 interface AnalysisReportV3Props {
@@ -34,6 +36,8 @@ export default function AnalysisReportV3({ analysisId, onBack }: AnalysisReportV
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [trendData, setTrendData] = useState<any>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -58,6 +62,45 @@ export default function AnalysisReportV3({ analysisId, onBack }: AnalysisReportV
 
     load();
   }, [user, analysisId]);
+
+  async function handleArchive() {
+    if (!user || !analysis) return;
+    setActionLoading(true);
+    const { error } = await supabase
+      .from("analyses")
+      .update({ deleted_at: new Date().toISOString(), status: "archived" })
+      .eq("id", analysis.id)
+      .eq("user_id", user.id);
+    setActionLoading(false);
+    if (!error) onBack();
+  }
+
+  async function handleDelete() {
+    if (!user || !analysis) return;
+    setActionLoading(true);
+    const { error } = await supabase
+      .from("analyses")
+      .delete()
+      .eq("id", analysis.id)
+      .eq("user_id", user.id);
+    setActionLoading(false);
+    if (!error) onBack();
+  }
+
+  async function handleAddToPortfolio() {
+    if (!user || !analysis) return;
+    const { error } = await supabase.from("portfolio_items").insert({
+      user_id: user.id,
+      analysis_id: analysis.id,
+      title: analysis.title,
+      category: analysis.category,
+      acquisition_price: analysis.asking_price,
+      listing_price: analysis.fair_market_value,
+      status: "active",
+      image_urls: [],
+    });
+    if (!error) onBack();
+  }
 
   if (loading) {
     return (
@@ -97,12 +140,49 @@ export default function AnalysisReportV3({ analysisId, onBack }: AnalysisReportV
             {formatDate(analysis.created_at)} • {analysis.marketplace}
           </p>
         </div>
-        <div
-          className={`px-4 py-2 rounded-xl border font-semibold text-sm ${getDecisionColor(
-            analysis.decision
-          )}`}
-        >
-          {analysis.decision}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleArchive}
+            disabled={actionLoading}
+            title="Archive this analysis"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-ink-400 hover:text-ink-200 hover:bg-ink-800/50 transition-colors disabled:opacity-50"
+          >
+            <Archive className="w-4 h-4" />
+            <span className="hidden sm:inline">Archive</span>
+          </button>
+          {showDeleteConfirm ? (
+            <div className="flex items-center gap-2 bg-rose-500/10 border border-rose-500/30 rounded-lg p-1">
+              <span className="text-xs text-rose-300 px-2">Delete forever?</span>
+              <button
+                onClick={handleDelete}
+                disabled={actionLoading}
+                className="px-2 py-1 text-xs font-semibold text-rose-400 hover:bg-rose-500/20 rounded transition-colors"
+              >
+                Yes, delete
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-2 py-1 text-xs font-semibold text-ink-400 hover:bg-ink-700 rounded transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              title="Delete permanently"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-ink-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+          <div
+            className={`px-4 py-2 rounded-xl border font-semibold text-sm ${getDecisionColor(
+              analysis.decision
+            )}`}
+          >
+            {analysis.decision}
+          </div>
         </div>
       </div>
 
@@ -333,7 +413,9 @@ export default function AnalysisReportV3({ analysisId, onBack }: AnalysisReportV
         <button onClick={onBack} className="btn-secondary">
           Back to Dashboard
         </button>
-        <button className="btn-primary">Add to Portfolio</button>
+        <button onClick={handleAddToPortfolio} className="btn-primary">
+          Add to Portfolio
+        </button>
       </div>
     </div>
   );
