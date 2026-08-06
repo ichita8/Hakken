@@ -68,9 +68,10 @@ export interface Analysis {
   // Pipeline
   layer_results: LayerResults | null;
   // Status
-  status: "pending" | "analyzing" | "complete" | "failed";
+  status: "pending" | "analyzing" | "complete" | "failed" | "archived";
   error_message: string | null;
   created_at: string;
+  deleted_at: string | null;
 }
 
 export interface Comp {
