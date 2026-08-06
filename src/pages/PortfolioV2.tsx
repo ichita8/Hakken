@@ -30,6 +30,8 @@ export default function PortfolioV2() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "active" | "listed" | "sold">("all");
   const [sortBy, setSortBy] = useState<"recent" | "profit" | "roi" | "value">("recent");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadPortfolio() {
@@ -47,6 +49,22 @@ export default function PortfolioV2() {
 
     loadPortfolio();
   }, [user]);
+
+  async function handleDelete(id: string) {
+    if (!user) return;
+    setDeletingId(id);
+    const { error } = await supabase
+      .from("portfolio_items")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.id);
+
+    if (!error) {
+      setItems((prev) => prev.filter((i) => i.id !== id));
+    }
+    setDeletingId(null);
+    setConfirmDeleteId(null);
+  }
 
   // Calculate portfolio metrics
   const metrics = useMemo(() => {
@@ -378,9 +396,30 @@ export default function PortfolioV2() {
                           <button className="p-1 hover:bg-ink-700 rounded transition-colors">
                             <Edit2 className="w-4 h-4 text-ink-400" />
                           </button>
-                          <button className="p-1 hover:bg-ink-700 rounded transition-colors">
-                            <Trash2 className="w-4 h-4 text-ink-400" />
-                          </button>
+                          {confirmDeleteId === item.id ? (
+                            <div className="flex items-center gap-1 bg-rose-500/10 border border-rose-500/30 rounded-lg p-0.5">
+                              <button
+                                onClick={() => handleDelete(item.id)}
+                                disabled={deletingId === item.id}
+                                className="px-2 py-0.5 text-[10px] font-semibold text-rose-400 hover:bg-rose-500/20 rounded transition-colors"
+                              >
+                                {deletingId === item.id ? "..." : "Delete"}
+                              </button>
+                              <button
+                                onClick={() => setConfirmDeleteId(null)}
+                                className="px-2 py-0.5 text-[10px] font-semibold text-ink-400 hover:bg-ink-700 rounded transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDeleteId(item.id)}
+                              className="p-1 hover:bg-rose-500/20 rounded transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4 text-ink-400 hover:text-rose-400 transition-colors" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
