@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import type { Analysis, DealAlert } from "@/lib/types";
 import { DEFAULT_CATEGORIES } from "@/lib/types";
 import { formatCurrency, formatPercent, timeAgo, getDecisionColor, getScoreColor, getTierColor } from "@/lib/utils";
-import { TrendingUp, TrendingDown, ScanLine, Briefcase, Target, Zap, ArrowRight, Activity, Eye, Search, Download, Filter } from "lucide-react";
+import { TrendingUp, TrendingDown, ScanLine, Briefcase, Target, Zap, ArrowRight, Activity, Eye, Search, Download, Filter, Archive, Trash2, ArchiveRestore } from "lucide-react";
 
 interface DashboardProps {
   onNavigate: (page: "dashboard" | "analyze" | "portfolio" | "settings") => void;
@@ -20,12 +20,22 @@ export default function Dashboard({ onNavigate, onViewAnalysis }: DashboardProps
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [decisionFilter, setDecisionFilter] = useState<string>("all");
+  const [showArchived, setShowArchived] = useState(false);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
       if (!user) return;
+
+      let query = supabase.from("analyses").select("*").eq("user_id", user.id);
+      if (!showArchived) {
+        query = query.is("deleted_at", null);
+      } else {
+        query = query.not("deleted_at", "is", null);
+      }
+
       const [analysesRes, alertsRes] = await Promise.all([
-        supabase.from("analyses").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(50),
+        query.order("created_at", { ascending: false }).limit(50),
         supabase.from("deal_alerts").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5),
       ]);
 
@@ -43,7 +53,7 @@ export default function Dashboard({ onNavigate, onViewAnalysis }: DashboardProps
       setLoading(false);
     }
     loadData();
-  }, [user]);
+  }, [user, showArchived]);
 
   const filteredAnalyses = useMemo(() => {
     let result = recentAnalyses;
@@ -102,6 +112,56 @@ export default function Dashboard({ onNavigate, onViewAnalysis }: DashboardProps
     URL.revokeObjectURL(url);
   }
 
+  async function handleArchive(id: string) {
+    setArchivingId(id);
+    const { error } = await supabase
+      .from("analyses")
+      .update({ deleted_at: new Date().toISOString(), status: "archived" })
+      .eq("id", id)
+      .eq("user_id", user!.id);
+
+    if (!error) {
+      setRecentAnalyses((prev) => prev.filter((a) => a.id !== id));
+      setArchivingId(null);
+    } else {
+      setArchivingId(null);
+    }
+  }
+
+  async function handleRestore(id: string) {
+    setArchivingId(id);
+    const { data, error } = await supabase
+      .from("analyses")
+      .update({ deleted_at: null, status: "complete" })
+      .eq("id", id)
+      .eq("user_id", user!.id)
+      .select()
+      .single();
+
+    if (!error && data) {
+      setRecentAnalyses((prev) => [data as Analysis, ...prev.filter((a) => a.id !== id)]);
+      setArchivingId(null);
+    } else {
+      setArchivingId(null);
+    }
+  }
+
+  async function handlePermanentDelete(id: string) {
+    setArchivingId(id);
+    const { error } = await supabase
+      .from("analyses")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user!.id);
+
+    if (!error) {
+      setRecentAnalyses((prev) => prev.filter((a) => a.id !== id));
+      setArchivingId(null);
+    } else {
+      setArchivingId(null);
+    }
+  }
+
   const statCards = [
     { label: "Total Analyses", value: stats.total.toString(), icon: ScanLine, color: "text-brand-400", bg: "bg-brand-500/10" },
     { label: "BUY Signals", value: stats.buyCount.toString(), icon: Zap, color: "text-emerald-400", bg: "bg-emerald-500/10" },
@@ -147,14 +207,25 @@ export default function Dashboard({ onNavigate, onViewAnalysis }: DashboardProps
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
               <Activity className="w-5 h-5 text-brand-400" />
-              Recent Analyses
+              {showArchived ? "Archived Analyses" : "Recent Analyses"}
             </h2>
             <div className="flex items-center gap-2">
-              {recentAnalyses.length > 0 && (
+              {recentAnalyses.length > 0 && !showArchived && (
                 <button onClick={exportCSV} className="text-sm text-ink-400 hover:text-brand-400 flex items-center gap-1 transition-colors">
                   <Download className="w-3.5 h-3.5" /> Export CSV
                 </button>
               )}
+              <button
+                onClick={() => setShowArchived(!showArchived)}
+                className={`text-sm flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
+                  showArchived
+                    ? "bg-brand-500/20 text-brand-300 border border-brand-500/30"
+                    : "text-ink-400 hover:text-ink-200 border border-transparent"
+                }`}
+              >
+                <Archive className="w-3.5 h-3.5" />
+                {showArchived ? "Showing Archived" : "Archived"}
+              </button>
             </div>
           </div>
 
@@ -204,17 +275,23 @@ export default function Dashboard({ onNavigate, onViewAnalysis }: DashboardProps
           ) : filteredAnalyses.length === 0 ? (
             <div className="glass-card p-12 text-center">
               <div className="w-16 h-16 rounded-2xl bg-ink-800/50 flex items-center justify-center mx-auto mb-4">
-                {recentAnalyses.length === 0 ? <ScanLine className="w-8 h-8 text-ink-500" /> : <Filter className="w-8 h-8 text-ink-500" />}
+                {showArchived ? <Archive className="w-8 h-8 text-ink-500" /> : recentAnalyses.length === 0 ? <ScanLine className="w-8 h-8 text-ink-500" /> : <Filter className="w-8 h-8 text-ink-500" />}
               </div>
               <h3 className="text-lg font-medium text-ink-200 mb-2">
-                {recentAnalyses.length === 0 ? "No analyses yet" : "No matching analyses"}
+                {showArchived ? "No archived analyses" : recentAnalyses.length === 0 ? "No analyses yet" : "No matching analyses"}
               </h3>
               <p className="text-sm text-ink-400 mb-6">
-                {recentAnalyses.length === 0
+                {showArchived
+                  ? "Archived analyses will appear here. Archive items from your dashboard to declutter without losing data."
+                  : recentAnalyses.length === 0
                   ? "Start by analyzing your first listing to discover profitable resale opportunities."
                   : "Try adjusting your search or filters."}
               </p>
-              {recentAnalyses.length === 0 ? (
+              {showArchived ? (
+                <button onClick={() => setShowArchived(false)} className="btn-secondary">
+                  Back to Active Analyses
+                </button>
+              ) : recentAnalyses.length === 0 ? (
                 <button onClick={() => onNavigate("analyze")} className="btn-primary inline-flex items-center gap-2">
                   <ScanLine className="w-4 h-4" />
                   Analyze a Listing
@@ -231,7 +308,16 @@ export default function Dashboard({ onNavigate, onViewAnalysis }: DashboardProps
           ) : (
             <div className="space-y-3">
               {filteredAnalyses.map((analysis) => (
-                <AnalysisCard key={analysis.id} analysis={analysis} onClick={() => onViewAnalysis(analysis.id)} />
+                <AnalysisCard
+                  key={analysis.id}
+                  analysis={analysis}
+                  onClick={() => onViewAnalysis(analysis.id)}
+                  onArchive={handleArchive}
+                  onRestore={handleRestore}
+                  onDelete={handlePermanentDelete}
+                  isArchived={showArchived}
+                  isArchiving={archivingId === analysis.id}
+                />
               ))}
             </div>
           )}
@@ -293,9 +379,31 @@ export default function Dashboard({ onNavigate, onViewAnalysis }: DashboardProps
   );
 }
 
-function AnalysisCard({ analysis, onClick }: { analysis: Analysis; onClick: () => void }) {
+function AnalysisCard({
+  analysis,
+  onClick,
+  onArchive,
+  onRestore,
+  onDelete,
+  isArchived,
+  isArchiving,
+}: {
+  analysis: Analysis;
+  onClick: () => void;
+  onArchive: (id: string) => void;
+  onRestore: (id: string) => void;
+  onDelete: (id: string) => void;
+  isArchived: boolean;
+  isArchiving: boolean;
+}) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const isComplete = analysis.status === "complete";
   const isAnalyzing = analysis.status === "analyzing" || analysis.status === "pending";
+
+  function handleActionClick(e: React.MouseEvent, action: () => void) {
+    e.stopPropagation();
+    action();
+  }
 
   return (
     <div onClick={onClick} className="glass-card p-5 glass-hover cursor-pointer group">
@@ -334,16 +442,69 @@ function AnalysisCard({ analysis, onClick }: { analysis: Analysis; onClick: () =
           )}
         </div>
 
-        {isComplete && analysis.opportunity_score !== null && (
-          <div className="text-right flex-shrink-0">
-            <div className={`text-2xl font-bold font-display ${getScoreColor(analysis.opportunity_score)}`}>
-              {analysis.opportunity_score}
+        <div className="flex items-start gap-2 flex-shrink-0">
+          {isComplete && analysis.opportunity_score !== null && (
+            <div className="text-right">
+              <div className={`text-2xl font-bold font-display ${getScoreColor(analysis.opportunity_score)}`}>
+                {analysis.opportunity_score}
+              </div>
+              <div className={`text-[10px] uppercase tracking-wider ${getTierColor(analysis.opportunity_tier)}`}>
+                {analysis.opportunity_tier}
+              </div>
             </div>
-            <div className={`text-[10px] uppercase tracking-wider ${getTierColor(analysis.opportunity_tier)}`}>
-              {analysis.opportunity_tier}
+          )}
+
+          {/* Action buttons */}
+          {isArchiving ? (
+            <div className="flex items-center justify-center w-8 h-8">
+              <div className="w-4 h-4 border-2 border-ink-500 border-t-brand-400 rounded-full animate-spin" />
             </div>
-          </div>
-        )}
+          ) : confirmDelete ? (
+            <div className="flex items-center gap-1 bg-ink-800/80 rounded-lg p-1">
+              <button
+                onClick={(e) => handleActionClick(e, () => { onDelete(analysis.id); setConfirmDelete(false); })}
+                className="px-2 py-1 text-[10px] font-semibold text-rose-400 hover:bg-rose-500/20 rounded transition-colors"
+              >
+                Delete
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); }}
+                className="px-2 py-1 text-[10px] font-semibold text-ink-400 hover:bg-ink-700 rounded transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              {isArchived ? (
+                <>
+                  <button
+                    onClick={(e) => handleActionClick(e, () => onRestore(analysis.id))}
+                    title="Restore"
+                    className="p-1.5 rounded-lg hover:bg-emerald-500/20 text-ink-500 hover:text-emerald-400 transition-colors"
+                  >
+                    <ArchiveRestore className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
+                    title="Delete permanently"
+                    className="p-1.5 rounded-lg hover:bg-rose-500/20 text-ink-500 hover:text-rose-400 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={(e) => handleActionClick(e, () => onArchive(analysis.id))}
+                  title="Archive"
+                  className="p-1.5 rounded-lg hover:bg-ink-700 text-ink-500 hover:text-ink-200 transition-colors"
+                >
+                  <Archive className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {isComplete && analysis.expected_profit !== null && (
