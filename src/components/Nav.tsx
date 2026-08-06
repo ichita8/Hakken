@@ -1,11 +1,11 @@
 import { useAuth } from "@/context/AuthContext";
-import { Radar, LayoutDashboard, ScanLine, Briefcase, Settings, LogOut, Bell } from "lucide-react";
+import { Radar, LayoutDashboard, ScanLine, Briefcase, Settings, LogOut, Bell, Store } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import type { DealAlert } from "@/lib/types";
 import { timeAgo, getDecisionColor } from "@/lib/utils";
 
-type Page = "dashboard" | "analyze" | "portfolio" | "settings";
+type Page = "dashboard" | "analyze" | "portfolio" | "marketplace" | "settings";
 
 interface NavProps {
   currentPage: Page;
@@ -42,6 +42,7 @@ export default function Nav({ currentPage, onNavigate }: NavProps) {
   const navItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "analyze", label: "Analyze", icon: ScanLine },
+    { id: "marketplace", label: "Marketplace", icon: Store },
     { id: "portfolio", label: "Portfolio", icon: Briefcase },
     { id: "settings", label: "Settings", icon: Settings },
   ];
