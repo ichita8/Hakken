@@ -8,6 +8,7 @@ import AnalysisReport from "@/pages/AnalysisReportV3";
 import Portfolio from "@/pages/PortfolioV2";
 import Marketplace from "@/pages/Marketplace";
 import Settings from "@/pages/Settings";
+import { isSupabaseConfigured, missingSupabaseEnv } from "@/lib/supabase";
 import { Radar } from "lucide-react";
 
 type Page = "dashboard" | "analyze" | "portfolio" | "marketplace" | "settings";
@@ -25,6 +26,22 @@ function AppContent() {
             <Radar className="w-8 h-8 text-brand-400" />
           </div>
           <p className="text-sm text-ink-400">Loading HAKKEN...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isSupabaseConfigured) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="max-w-xl w-full rounded-2xl border border-red-500/30 bg-red-500/5 p-6">
+          <h1 className="text-xl font-semibold text-white">Missing Supabase configuration</h1>
+          <p className="text-ink-300 mt-2">
+            Add the required environment variables and redeploy the site.
+          </p>
+          <p className="text-sm text-ink-400 mt-3">
+            Missing: {missingSupabaseEnv.join(", ")}
+          </p>
         </div>
       </div>
     );
