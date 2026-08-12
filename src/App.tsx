@@ -54,7 +54,6 @@ function AppContent() {
           <AnalysisReport
             analysisId={viewingAnalysis}
             onBack={() => { setViewingAnalysis(null); setPage("dashboard"); }}
-            onNavigate={handleNavigate}
           />
         ) : page === "dashboard" ? (
           <Dashboard onNavigate={handleNavigate} onViewAnalysis={handleViewAnalysis} />
