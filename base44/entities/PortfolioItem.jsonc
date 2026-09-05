@@ -1,0 +1,80 @@
+{
+  "name": "PortfolioItem",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "marketplace_bought": {
+      "type": "string"
+    },
+    "analysis_id": {
+      "type": "string"
+    },
+    "acquisition_price": {
+      "type": "number"
+    },
+    "listing_price": {
+      "type": "number"
+    },
+    "sold_price": {
+      "type": "number"
+    },
+    "sold_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "fees_paid": {
+      "type": "number"
+    },
+    "shipping_paid": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "listed",
+        "sold"
+      ],
+      "default": "active"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "image_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "title",
+    "acquisition_price",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}
