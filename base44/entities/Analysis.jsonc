@@ -1,0 +1,165 @@
+{
+  "name": "Analysis",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "asking_price": {
+      "type": "number"
+    },
+    "marketplace": {
+      "type": "string"
+    },
+    "listing_url": {
+      "type": "string"
+    },
+    "condition": {
+      "type": "string"
+    },
+    "image_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "category": {
+      "type": "string"
+    },
+    "brand": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "variant": {
+      "type": "string"
+    },
+    "year": {
+      "type": "string"
+    },
+    "identification_confidence": {
+      "type": "number"
+    },
+    "condition_overall": {
+      "type": "string"
+    },
+    "condition_confidence": {
+      "type": "number"
+    },
+    "authenticity_risk": {
+      "type": "string"
+    },
+    "authenticity_confidence": {
+      "type": "number"
+    },
+    "positive_signals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warning_signals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "fair_market_value": {
+      "type": "number"
+    },
+    "resale_low": {
+      "type": "number"
+    },
+    "resale_high": {
+      "type": "number"
+    },
+    "fast_sale_price": {
+      "type": "number"
+    },
+    "expected_sale_price": {
+      "type": "number"
+    },
+    "max_acquisition_price": {
+      "type": "number"
+    },
+    "marketplace_fees": {
+      "type": "number"
+    },
+    "shipping_cost": {
+      "type": "number"
+    },
+    "other_costs": {
+      "type": "number"
+    },
+    "gross_profit": {
+      "type": "number"
+    },
+    "net_profit": {
+      "type": "number"
+    },
+    "roi": {
+      "type": "number"
+    },
+    "risk_level": {
+      "type": "string"
+    },
+    "data_confidence": {
+      "type": "number"
+    },
+    "demand_liquidity": {
+      "type": "number"
+    },
+    "opportunity_score": {
+      "type": "number"
+    },
+    "decision": {
+      "type": "string"
+    },
+    "negotiation_max_price": {
+      "type": "number"
+    },
+    "negotiation_message": {
+      "type": "string"
+    },
+    "score_explanation": {
+      "type": "string"
+    },
+    "layers": {
+      "type": "object"
+    },
+    "is_fallback": {
+      "type": "boolean"
+    },
+    "status": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "asking_price"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}
